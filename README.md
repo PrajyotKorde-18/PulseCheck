@@ -47,7 +47,7 @@ On synthetic data, PulseCheck injects known faults and measures detection per fa
 pulsecheck benchmark --seed 42
 ```
 
-Results: see [reports/benchmark.md](reports/benchmark.md). *(Copy the headline numbers from `reports/benchmark.json`; don't type them by hand.)*
+Results: see [reports/benchmark.md](reports/benchmark.md). 
 
 ## Use it in your project
 
