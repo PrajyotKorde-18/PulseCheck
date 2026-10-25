@@ -1,0 +1,126 @@
+rules:
+  - rule_id: "RULE_REQUIRED_VALUES"
+    reason_code: "ERR_NULL_VALUE"
+    description: "Required columns must not be null, empty, or whitespace"
+    required_roles: []
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_TYPE_PARSING"
+    reason_code: "ERR_TYPE_PARSING"
+    description: "Numeric and timestamp fields must parse cleanly into declared types"
+    required_roles: []
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_CHRONOLOGY"
+    reason_code: "ERR_INVALID_CHRONOLOGY"
+    description: "Delivery timestamp must not precede pickup timestamp"
+    required_roles:
+      - "pickup_time"
+      - "delivery_time"
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_MAX_DURATION"
+    reason_code: "ERR_MAX_DURATION_EXCEEDED"
+    description: "Trip duration must not exceed empirically calibrated limit (14400s / 4h)"
+    required_roles:
+      - "pickup_time"
+      - "delivery_time"
+    severity: "MEDIUM"
+    enabled: true
+    parameters:
+      max_duration_seconds: 14400
+
+  - rule_id: "RULE_MAX_SPEED"
+    reason_code: "ERR_SPEED_EXCEEDED"
+    description: "Calculated trip speed must not exceed empirical urban highway cap (80 mph)"
+    required_roles:
+      - "pickup_time"
+      - "delivery_time"
+    severity: "MEDIUM"
+    enabled: true
+    parameters:
+      max_speed_kmh: 80.0
+
+  - rule_id: "RULE_GEO_BOUNDS"
+    reason_code: "ERR_OUT_OF_BOUNDS"
+    description: "Coordinates must lie within the bounding box of the specified city"
+    required_roles:
+      - "lat"
+      - "lon"
+      - "city"
+    severity: "MEDIUM"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_SWAPPED_COORDINATES"
+    reason_code: "ERR_SWAPPED_COORDINATES"
+    description: "Coordinates inverted (lat in lon range and lon in lat range)"
+    required_roles:
+      - "lat"
+      - "lon"
+      - "city"
+    severity: "MEDIUM"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_CANCELLED_DELIVERY"
+    reason_code: "ERR_CANCELLED_WITH_DELIVERY"
+    description: "Cancelled or aborted trips cannot have an associated delivery timestamp"
+    required_roles:
+      - "status"
+      - "delivery_time"
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_PHONE_FORMAT"
+    reason_code: "ERR_INVALID_PHONE"
+    description: "Mobile numbers must match valid national phone format"
+    required_roles:
+      - "phone"
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_PINCODE_FORMAT"
+    reason_code: "ERR_INVALID_PINCODE"
+    description: "Postal PIN codes must match valid postal PIN format"
+    required_roles:
+      - "pincode"
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_PLATE_FORMAT"
+    reason_code: "ERR_INVALID_PLATE"
+    description: "Vehicle registration plate must match vehicle registration format"
+    required_roles:
+      - "plate"
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_DUPLICATE_KEY"
+    reason_code: "ERR_DUPLICATE_KEY"
+    description: "Identifies duplicate primary or composite keys within the current batch"
+    required_roles:
+      - "id"
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_FUTURE_TIMESTAMP"
+    reason_code: "ERR_FUTURE_TIMESTAMP"
+    description: "Event timestamp must not be in the future relative to injectable reference clock"
+    required_roles:
+      - "pickup_time"
+    severity: "HIGH"
+    enabled: false
+    parameters:
+      tolerance_seconds: 0

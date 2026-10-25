@@ -1,0 +1,60 @@
+dataset:
+  name: "logistics_trips"
+  format: "csv"
+  csv_options:
+    delimiter: ","
+    has_header: true
+  table_name: "trips"
+  identity_roles:
+    - "id"
+  composite_key_hash_algorithm: "sha256"
+  unknown_columns_policy: "warn"
+  conflict_policy: "skip"
+  transaction_scope: "batch"
+  repeated_file_policy: "skip"
+  chunk_size: 1000
+  columns:
+    - name: "trip_id"
+      role: "id"
+      sql_type: "VARCHAR(64)"
+      nullable: false
+    - name: "pickup_time"
+      role: "pickup_time"
+      sql_type: "TIMESTAMPTZ"
+      nullable: false
+    - name: "delivery_time"
+      role: "delivery_time"
+      sql_type: "TIMESTAMPTZ"
+      nullable: true
+    - name: "pickup_lat"
+      role: "lat"
+      sql_type: "DOUBLE PRECISION"
+      nullable: false
+    - name: "pickup_lon"
+      role: "lon"
+      sql_type: "DOUBLE PRECISION"
+      nullable: false
+    - name: "city"
+      role: "city"
+      sql_type: "VARCHAR(64)"
+      nullable: false
+    - name: "driver_phone"
+      role: "phone"
+      sql_type: "VARCHAR(20)"
+      nullable: true
+    - name: "postal_code"
+      role: "pincode"
+      sql_type: "VARCHAR(10)"
+      nullable: true
+    - name: "vehicle_plate"
+      role: "plate"
+      sql_type: "VARCHAR(20)"
+      nullable: true
+    - name: "trip_status"
+      role: "status"
+      sql_type: "VARCHAR(32)"
+      nullable: false
+    - name: "trip_distance_km"
+      role: "distance"
+      sql_type: "DOUBLE PRECISION"
+      nullable: true

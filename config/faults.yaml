@@ -1,0 +1,129 @@
+faults:
+  - name: "null_id"
+    description: "Required trip_id is missing or null"
+    target_roles: ["id"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_NULL_VALUE"
+    enabled: true
+    parameters: {}
+
+  - name: "swapped_times"
+    description: "Delivery timestamp occurs before pickup timestamp"
+    target_roles: ["pickup_time", "delivery_time"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_INVALID_CHRONOLOGY"
+    enabled: true
+    parameters: {}
+
+  - name: "swapped_lat_lon"
+    description: "Latitude and longitude coordinates inverted"
+    target_roles: ["lat", "lon"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_SWAPPED_COORDINATES"
+    enabled: true
+    parameters: {}
+
+  - name: "out_of_box_coordinates"
+    description: "Coordinates sampled far outside configured city bounding box"
+    target_roles: ["lat", "lon", "city"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_OUT_OF_BOUNDS"
+    enabled: true
+    parameters:
+      lat_offset: 15.0
+      lon_offset: 15.0
+
+  - name: "bad_mobile"
+    description: "Invalid phone number failing Indian mobile regex format"
+    target_roles: ["phone"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_INVALID_PHONE"
+    enabled: true
+    parameters:
+      corrupted_value: "12345"
+
+  - name: "bad_pin"
+    description: "Invalid postal code failing Indian 6-digit PIN format"
+    target_roles: ["pincode"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_INVALID_PINCODE"
+    enabled: true
+    parameters:
+      corrupted_value: "999"
+
+  - name: "bad_plate"
+    description: "Invalid vehicle registration plate format"
+    target_roles: ["plate"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_INVALID_PLATE"
+    enabled: true
+    parameters:
+      corrupted_value: "NOT_A_PLATE_1"
+
+  - name: "duplicate_ids"
+    description: "Duplicate record identity keys within the batch"
+    target_roles: ["id"]
+    scope: "rows"
+    count: 2
+    expected_detector: "ERR_DUPLICATE_KEY"
+    enabled: true
+    parameters: {}
+
+  - name: "future_timestamps"
+    description: "Event timestamps set in the future beyond clock tolerance"
+    target_roles: ["pickup_time"]
+    scope: "rows"
+    rate: 0.05
+    expected_detector: "ERR_FUTURE_TIMESTAMP"
+    enabled: true
+    parameters:
+      days_ahead: 30
+
+  - name: "dropped_required_column"
+    description: "Required schema column removed from file entirely"
+    target_roles: ["pickup_time"]
+    scope: "batch"
+    expected_detector: "rejected_schema"
+    enabled: false
+    parameters: {}
+
+  - name: "missing_city"
+    description: "Entire city scope dropped from daily data"
+    target_roles: ["city"]
+    scope: "batch"
+    expected_detector: "CHECK_MISSING_SCOPES"
+    enabled: false
+    parameters:
+      target_city: "Delhi"
+
+  - name: "volume_drop"
+    description: "Drastic drop in trip volume for target city"
+    target_roles: ["city"]
+    scope: "batch"
+    expected_detector: "CHECK_VOLUME_DROP"
+    enabled: false
+    parameters:
+      drop_fraction: 0.85
+      target_city: "Bengaluru"
+
+  - name: "stale_batch"
+    description: "Batch containing only historical events beyond freshness threshold"
+    target_roles: ["pickup_time"]
+    scope: "batch"
+    expected_detector: "CHECK_FRESHNESS_STALE"
+    enabled: false
+    parameters:
+      days_behind: 30
+
+replay_recovery:
+  fault_name: "swapped_times"
+  fix_type: "config"
+  loosened_rule_id: "RULE_CHRONOLOGY"
+

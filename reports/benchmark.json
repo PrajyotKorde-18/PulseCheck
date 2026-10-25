@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "run_id": "bench_20261025_095521_42",
+    "seed": 42,
+    "config_hash": "deea1eb53fac585ffd54d344214d12bfb8d1475e02ec398d1e84dcd4c011087e",
+    "git_commit_hash": "workspace_uncommitted",
+    "package_versions": {
+      "python": "3.13.3",
+      "pandas": "2.3.3",
+      "pydantic": "2.11.7",
+      "pyarrow": "23.0.1",
+      "faker": "40.43.0",
+      "psycopg": "3.3.6"
+    },
+    "runtime_seconds": 0.4187,
+    "timestamp": "2026-10-25T09:55:22.310214+00:00"
+  },
+  "overall_metrics": {
+    "total_history_rows": 405,
+    "total_final_day_clean_rows": 150,
+    "total_final_day_faulty_rows": 150,
+    "total_loaded_rows": 104,
+    "total_quarantined_rows": 46,
+    "clean_rows_wrongly_quarantined": 1,
+    "alerts_on_clean_scopes": 0,
+    "rows_recovered_by_replay": 7
+  },
+  "per_fault_metrics": [
+    {
+      "fault_name": "null_id",
+      "scope": "rows",
+      "expected_detector": "ERR_NULL_VALUE",
+      "injected": 7,
+      "caught": 0,
+      "missed": 7,
+      "false_alarms": 1,
+      "precision": 0.0,
+      "recall": 0.0,
+      "explanation": "7 row(s) quarantined with ERR_NULL_VALUE, but bear trip_id=null, preventing key correlation to pre-mutation IDs."
+    },
+    {
+      "fault_name": "swapped_times",
+      "scope": "rows",
+      "expected_detector": "ERR_INVALID_CHRONOLOGY",
+      "injected": 7,
+      "caught": 7,
+      "missed": 0,
+      "false_alarms": 7,
+      "precision": 0.5,
+      "recall": 1.0,
+      "explanation": null
+    },
+    {
+      "fault_name": "swapped_lat_lon",
+      "scope": "rows",
+      "expected_detector": "ERR_SWAPPED_COORDINATES",
+      "injected": 7,
+      "caught": 6,
+      "missed": 1,
+      "false_alarms": 0,
+      "precision": 1.0,
+      "recall": 0.8571,
+      "explanation": "1 row(s) masked by compound overlapping fault mutations on the same row index."
+    },
+    {
+      "fault_name": "out_of_box_coordinates",
+      "scope": "rows",
+      "expected_detector": "ERR_OUT_OF_BOUNDS",
+      "injected": 7,
+      "caught": 6,
+      "missed": 1,
+      "false_alarms": 7,
+      "precision": 0.4615,
+      "recall": 0.8571,
+      "explanation": "1 row(s) masked by compound overlapping fault mutations on the same row index."
+    },
+    {
+      "fault_name": "bad_mobile",
+      "scope": "rows",
+      "expected_detector": "ERR_INVALID_PHONE",
+      "injected": 7,
+      "caught": 6,
+      "missed": 1,
+      "false_alarms": 0,
+      "precision": 1.0,
+      "recall": 0.8571,
+      "explanation": "1 row(s) masked by compound overlapping fault mutations on the same row index."
+    },
+    {
+      "fault_name": "bad_pin",
+      "scope": "rows",
+      "expected_detector": "ERR_INVALID_PINCODE",
+      "injected": 7,
+      "caught": 7,
+      "missed": 0,
+      "false_alarms": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "explanation": null
+    },
+    {
+      "fault_name": "bad_plate",
+      "scope": "rows",
+      "expected_detector": "ERR_INVALID_PLATE",
+      "injected": 7,
+      "caught": 7,
+      "missed": 0,
+      "false_alarms": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "explanation": null
+    },
+    {
+      "fault_name": "duplicate_ids",
+      "scope": "rows",
+      "expected_detector": "ERR_DUPLICATE_KEY",
+      "injected": 1,
+      "caught": 0,
+      "missed": 1,
+      "false_alarms": 2,
+      "precision": 0.0,
+      "recall": 0.0,
+      "explanation": "1 duplicate row quarantined under the copied source ID rather than its original pre-mutation ID."
+    },
+    {
+      "fault_name": "future_timestamps",
+      "scope": "rows",
+      "expected_detector": "ERR_FUTURE_TIMESTAMP",
+      "injected": 7,
+      "caught": 7,
+      "missed": 0,
+      "false_alarms": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "explanation": null
+    }
+  ],
+  "author_statement": "Notice: Faults and detectors were both designed and implemented by the project author. Consequently, benchmark metrics demonstrate that the validation and batch check engines perform as designed under controlled synthetic defect distributions, rather than measuring generalized accuracy across arbitrary real-world logistics datasets."
+}

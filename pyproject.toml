@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulsecheck"
+version = "0.1.0"
+description = "Data ingestion validation, schema enforcement, and quarantine framework"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "PulseCheck Team" }
+]
+dependencies = [
+    "pandas>=2.2.0",
+    "pyarrow>=15.0.0",
+    "pandera>=0.20.0",
+    "indpy-core==0.1.9",
+    "pyyaml>=6.0.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.8.0",
+    "psycopg[binary]>=3.2.0",
+    "faker>=30.0.0",
+    "haversine>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.9.0",
+]
+
+[project.scripts]
+pulsecheck = "pulsecheck.cli:main"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "PLR2004", # Magic value comparison prohibition (Rule B)
+]
+ignore = []
+
+[tool.ruff.lint.pylint]
+allow-magic-values = [0, 1, -1, 0.0, 1.0, -1.0, "", "__main__"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "integration: requires external services such as PostgreSQL Docker container",
+    "unit: database-free fast unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]

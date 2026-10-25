@@ -1,0 +1,16 @@
+cities:
+- name: Mumbai
+  min_lat: 18.895
+  max_lat: 19.215
+  min_lon: 72.7092
+  max_lon: 73.0292
+- name: Bengaluru
+  min_lat: 12.8335
+  max_lat: 13.1426
+  min_lon: 77.4599
+  max_lon: 77.7841
+- name: Delhi
+  min_lat: 28.4046
+  max_lat: 28.8834
+  min_lon: 76.8388
+  max_lon: 77.3453

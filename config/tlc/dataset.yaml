@@ -1,0 +1,93 @@
+dataset:
+  chunk_size: 50000
+  columns:
+  - name: VendorID
+    nullable: false
+    role: id
+    sql_type: INTEGER
+  - name: tpep_pickup_datetime
+    nullable: false
+    role: pickup_time
+    sql_type: TIMESTAMPTZ
+  - name: tpep_dropoff_datetime
+    nullable: false
+    role: delivery_time
+    sql_type: TIMESTAMPTZ
+  - name: passenger_count
+    nullable: true
+    role: passenger_count
+    sql_type: BIGINT
+  - name: trip_distance
+    nullable: false
+    role: distance
+    sql_type: DOUBLE PRECISION
+  - name: RatecodeID
+    nullable: true
+    role: rate_code
+    sql_type: BIGINT
+  - name: store_and_fwd_flag
+    nullable: true
+    role: store_and_fwd
+    sql_type: VARCHAR(8)
+  - name: PULocationID
+    nullable: false
+    role: scope
+    sql_type: INTEGER
+  - name: DOLocationID
+    nullable: false
+    role: dropoff_scope
+    sql_type: INTEGER
+  - name: payment_type
+    nullable: false
+    role: payment_type
+    sql_type: BIGINT
+  - name: fare_amount
+    nullable: false
+    role: fare
+    sql_type: DOUBLE PRECISION
+  - name: extra
+    nullable: true
+    role: extra
+    sql_type: DOUBLE PRECISION
+  - name: mta_tax
+    nullable: true
+    role: mta_tax
+    sql_type: DOUBLE PRECISION
+  - name: tip_amount
+    nullable: true
+    role: tip
+    sql_type: DOUBLE PRECISION
+  - name: tolls_amount
+    nullable: true
+    role: tolls
+    sql_type: DOUBLE PRECISION
+  - name: improvement_surcharge
+    nullable: true
+    role: improvement_surcharge
+    sql_type: DOUBLE PRECISION
+  - name: total_amount
+    nullable: false
+    role: total_amount
+    sql_type: DOUBLE PRECISION
+  - name: congestion_surcharge
+    nullable: true
+    role: congestion_surcharge
+    sql_type: DOUBLE PRECISION
+  - name: Airport_fee
+    nullable: true
+    role: airport_fee
+    sql_type: DOUBLE PRECISION
+  composite_key_hash_algorithm: sha256
+  conflict_policy: skip
+  format: parquet
+  identity_roles:
+  - id
+  - pickup_time
+  - scope
+  - dropoff_scope
+  - fare
+  name: nyc_tlc_yellow_taxi
+  repeated_file_policy: skip
+  table_name: tlc_yellow_trips
+  transaction_scope: batch
+  unknown_columns_policy: warn

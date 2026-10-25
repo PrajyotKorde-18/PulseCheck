@@ -1,0 +1,108 @@
+rules:
+  - rule_id: "RULE_REQUIRED_VALUES"
+    reason_code: "ERR_NULL_VALUE"
+    description: "Required field is null, empty, or whitespace"
+    required_roles: []
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_TYPE_PARSING"
+    reason_code: "ERR_TYPE_PARSING"
+    description: "Value cannot be parsed into expected data type"
+    required_roles: []
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_CHRONOLOGY"
+    reason_code: "ERR_INVALID_CHRONOLOGY"
+    description: "Delivery or dropoff timestamp occurs before pickup timestamp"
+    required_roles: ["pickup_time", "delivery_time"]
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_MAX_DURATION"
+    reason_code: "ERR_MAX_DURATION_EXCEEDED"
+    description: "Trip duration exceeds configured maximum allowable seconds"
+    required_roles: ["pickup_time", "delivery_time"]
+    severity: "MEDIUM"
+    enabled: true
+    parameters:
+      max_duration_seconds: 86400
+
+  - rule_id: "RULE_MAX_SPEED"
+    reason_code: "ERR_SPEED_EXCEEDED"
+    description: "Implied speed between pickup and delivery exceeds maximum threshold"
+    required_roles: ["pickup_time", "delivery_time"]
+    severity: "MEDIUM"
+    enabled: true
+    parameters:
+      max_speed_kmh: 150.0
+
+  - rule_id: "RULE_GEO_BOUNDS"
+    reason_code: "ERR_OUT_OF_BOUNDS"
+    description: "Coordinates are outside the configured bounding box for the city"
+    required_roles: ["lat", "lon", "city"]
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_SWAPPED_COORDINATES"
+    reason_code: "ERR_SWAPPED_COORDINATES"
+    description: "Coordinates appear to have latitude and longitude inverted"
+    required_roles: ["lat", "lon", "city"]
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_CANCELLED_DELIVERY"
+    reason_code: "ERR_CANCELLED_WITH_DELIVERY"
+    description: "Cancelled or aborted trip status has an associated delivery timestamp"
+    required_roles: ["status", "delivery_time"]
+    severity: "MEDIUM"
+    enabled: true
+    parameters:
+      cancelled_statuses: ["cancelled", "aborted", "canceled"]
+
+  - rule_id: "RULE_PHONE_FORMAT"
+    reason_code: "ERR_INVALID_PHONE"
+    description: "Mobile number fails Indian national telecom format"
+    required_roles: ["phone"]
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_PINCODE_FORMAT"
+    reason_code: "ERR_INVALID_PINCODE"
+    description: "Postal PIN code fails Indian postal service format"
+    required_roles: ["pincode"]
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_PLATE_FORMAT"
+    reason_code: "ERR_INVALID_PLATE"
+    description: "Vehicle registration plate fails Indian motor vehicle standards"
+    required_roles: ["plate"]
+    severity: "LOW"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_DUPLICATE_KEY"
+    reason_code: "ERR_DUPLICATE_KEY"
+    description: "Duplicate primary or composite key encountered within the batch"
+    required_roles: ["id"]
+    severity: "HIGH"
+    enabled: true
+    parameters: {}
+
+  - rule_id: "RULE_FUTURE_TIMESTAMP"
+    reason_code: "ERR_FUTURE_TIMESTAMP"
+    description: "Pickup timestamp is in the future relative to the reference clock"
+    required_roles: ["pickup_time"]
+    severity: "HIGH"
+    enabled: true
+    parameters:
+      tolerance_seconds: 60

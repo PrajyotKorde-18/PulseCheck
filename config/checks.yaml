@@ -1,0 +1,48 @@
+batch_checks:
+  auto_check_batch: true
+  volume:
+    enabled: true
+    history_window_batches: 14
+    minimum_history_batches: 3
+    min_volume_ratio: 0.50
+    max_volume_ratio: 2.00
+    fallback_absolute_min_rows: 10
+    fallback_absolute_max_rows: 1000000
+
+  missing_scopes:
+    enabled: true
+    lookback_batches: 7
+    severity: "CRITICAL"
+
+  freshness:
+    enabled: true
+    event_time_role: "pickup_time"
+    max_lag_seconds: 86400
+    severity: "WARNING"
+
+  alerts:
+    cooldown_seconds: 3600
+    auto_close_healthy_batches: 3
+    destinations:
+      log: true
+      table: true
+      webhook: false
+
+  diagnostics:
+    enabled: true
+    max_source_share: 0.80
+    max_day_share: 0.80
+
+bench:
+  history_days: 3
+  trips_per_city_day: 50
+  seed: 42
+  source: "logistics_feed"
+  output_dir: "data/benchmark"
+  reports_json: "reports/benchmark.json"
+  reports_md: "reports/benchmark.md"
+  replay_recovery:
+    fault_name: "swapped_times"
+    fix_type: "config"
+    loosened_rule_id: "RULE_CHRONOLOGY"
+
