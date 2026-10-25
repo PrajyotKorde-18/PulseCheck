@@ -1,185 +1,140 @@
 # PulseCheck
 
-PulseCheck is a declarative data ingestion validation, schema enforcement, and quarantine engine for batch data pipelines. It intercepts incoming tabular feeds (CSV, Parquet), validates rows against configurable business rules, loads valid records idempotently into PostgreSQL, and preserves malformed rows in a queryable JSONB quarantine table alongside structured reason codes.
+**A data validation engine that keeps bad rows out of your database without stopping the pipeline.**
 
-Instead of hardcoding column names in application code, PulseCheck decouples source schemas from validation logic using semantic column roles. The same validation engine runs across freight logistics data and public mobility feeds (such as NYC TLC Taxi records) purely through configuration edits.
+I built this after asking a simple question: what actually happens when a messy daily file lands in a pipeline? With most setups, the answer is "the bad rows get loaded silently, or the whole batch fails." I wanted something that checks every row, loads the good ones, keeps the bad ones with a reason, and can retry them later.
 
----
+Real-data proof: [NYC TLC run report](reports/tlc_run.md) · Design docs: [docs/](docs/)
 
-## Architecture Overview
+## The problem
+
+Daily data files arrive with broken rows: dropoff before pickup, impossible speeds, duplicate ids, missing columns. Row checks alone also miss batch-level problems, like a city that sent no data today or a file that is a day old.
+
+## How it works
+
+Every file goes through two layers of checks:
+
+| Layer | What it is | Why it's there |
+|---|---|---|
+| Row validation | Vectorised business rules, one reason code per rule | Catches individual bad rows, and a row can fail several rules at once |
+| Batch checks | Volume, freshness and missing-scope checks against stored history | Catches problems no single row shows |
+
+The interesting part is what happens when things break:
+
+- **A row is bad.** It is kept in a PostgreSQL quarantine table with its full original values and a list of reasons. The valid rows still load.
+- **A required column is missing.** The whole batch is rejected as `rejected_schema` and nothing is loaded.
+- **The same file arrives twice.** File content hashes in `batch_registry` recognise it, and upserts (`ON CONFLICT`) leave the table identical.
+- **Rules change.** `pulsecheck replay` re-checks open quarantine rows with the current config and loads the ones that now pass.
+- **A city or zone vanishes, or data goes stale.** Batch checks raise an alert. Fingerprinted alerts with a cooldown prevent alert fatigue and auto-close after healthy runs.
+
+## Real data
+
+To check it isn't tied to my own synthetic data, I ran it on one month of real NYC TLC Yellow Taxi records (`yellow_tripdata_2024-01.parquet`) using configuration only:
+
+- 2,964,624 raw records split into 31 daily batches
+- 2,964,606 in-month records received, 2,961,265 loaded, 3,341 quarantined (0.1127%)
+- 18 out-of-month records isolated (clock resets to 2002/2009 and month-boundary trips)
+- Top findings: taximeters left running 20+ hours, implied speeds over 1,000 mph, negative trip durations
+- Limits (4-hour duration cap, 80 mph speed cap) were calibrated from the data's own percentiles
+
+Real data has no ground truth, so I report what was flagged, not recall. Full details are in [reports/tlc_run.md](reports/tlc_run.md).
+
+## Benchmark
+
+On synthetic data, PulseCheck injects known faults and measures detection per fault type.
 
 ```
-Incoming Feed (CSV / Parquet)
-       │
-       ▼
-┌─────────────────────────────────┐
-│     Batch Schema Validator      │ ──[ Missing Required Columns ]──> Abort (rejected_schema)
-└─────────────────────────────────┘
-       │ Schema Valid
-       ▼
-┌─────────────────────────────────┐
-│   Row Validation & Key Engine   │
-│  • Vectorized business rules    │
-│  • Deterministic composite keys │
-│  • Multi-reason accumulation    │
-└─────────────────────────────────┘
-       │
-       ├─── Valid Rows ──────> PostgreSQL Target Table (Idempotent ON CONFLICT)
-       │
-       └─── Quarantined Rows ─> PostgreSQL Quarantine Table (JSONB + GIN index)
-       │
-       ▼
-┌─────────────────────────────────┐
-│     Batch Verification Checks   │
-│  • Weekday volume median        │ ──[ Out of Bounds / Missing Scope ]──> Alerts Table / Webhook
-│  • Freshness lag & clock skew   │                                        (Deduplicated with Cooldown)
-└─────────────────────────────────┘
+pulsecheck benchmark --seed 42
 ```
 
-Detailed design documents, class diagrams, and sequence diagrams:
-- [docs/lld.md](docs/lld.md) - Low-level class diagrams, ERD, and execution sequences
-- [docs/architecture.md](docs/architecture.md) - System architecture and component interactions
-- [docs/decisions.md](docs/decisions.md) - 24 Architecture Decision Records (ADRs)
-- [docs/runbook.md](docs/runbook.md) - Step-by-step operational and deployment procedures
-- [docs/config-reference.md](docs/config-reference.md) - Complete YAML configuration schema reference
+Results: see [reports/benchmark.md](reports/benchmark.md). *(Copy the headline numbers from `reports/benchmark.json`; don't type them by hand.)*
 
----
+## Use it in your project
 
-## Core Capabilities
+You don't write validation code. You map your columns to roles in a config file:
 
-- **Zero-Code Column Role Mapping**: Maps physical source headers to semantic roles (`id`, `pickup_time`, `delivery_time`, `scope`, `distance`, `lat`, `lon`, `phone`, `plate`). Rules declare required roles; rules with missing roles are skipped automatically with logged explanations.
-- **Deterministic Composite Keys**: If a dataset lacks a single natural primary key, PulseCheck constructs an order-independent surrogate key using lexicographically sorted role values and SHA-256 hashing.
-- **Idempotent Ingestion**: PostgreSQL upserts using parameterized `ON CONFLICT` clauses with configurable conflict policies (`skip`, `update`, `quarantine`). Repeated file deliveries are tracked in `batch_registry` via file content hashes.
-- **JSONB Quarantine Subsystem**: Failed rows are saved with their full original row payload, 1-indexed row number, and a list of diagnostic failure objects. Indexed via PostgreSQL `GIN` on `reasons` for sub-second containment queries (`@>`).
-- **Closed-Loop Quarantine Replay**: The `pulsecheck replay` command re-evaluates open quarantine records against updated configurations, loads newly valid records into the target table, and resolves quarantine entries without touching production code.
-- **Statistical Batch Anomaly Detection**:
-  - **Volume Check**: Historical lookback comparing current batch count against the median of the last $N$ batches matching the same day of the week.
-  - **Missing Scopes**: Tracks active partitions (cities or taxi zones) over recent history and flags disappearing scopes with volume 0.
-  - **Freshness Check**: Measures max event timestamp against an injectable UTC reference clock.
-- **Alert Deduplication & Auto-Closure**: Fingerprinted alerts (`check_name:scope:severity`) prevent alert fatigue via configurable cooldown windows and auto-close when a scope passes consecutive healthy runs.
+```yaml
+# config/dataset.yaml (shape only, see docs/config-reference.md for the real schema)
+# map your physical column names to semantic roles:
+# id, pickup_time, delivery_time, scope, distance, lat, lon, phone, plate
+```
 
----
+Rules declare the roles they need. If your data lacks a role, that rule is skipped and the reason is logged. If your data has no single key, PulseCheck builds a deterministic composite key from sorted role values with SHA-256.
 
-## Quickstart
+### 1. Set up
 
-### Prerequisites
-- Python 3.11+
-- PostgreSQL 15+ (optional for dry-run/in-memory evaluation; local Docker Compose file provided)
-
-### 1. Setup Virtual Environment
 ```bash
 python -m venv .venv
-# On Windows:
-.\.venv\Scripts\Activate.ps1
-# On Linux/macOS:
-source .venv/bin/activate
-
+# Windows: .\.venv\Scripts\Activate.ps1
+# Linux/macOS: source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Validate Configuration
+### 2. Validate the config
+
 ```bash
 pulsecheck validate-config
 ```
 
-### 3. Initialize Database Tables
-```bash
-# Optional: start local Postgres via Docker
-docker compose up -d
+### 3. Start Postgres and create tables
 
-# Create core tracking tables, target table, and GIN indexes
+```bash
+docker compose up -d
 pulsecheck init-db
 ```
 
-### 4. Process an Ingestion File
+### 4. Process a file
+
 ```bash
-# Live run with database writes
+# Live run
 pulsecheck run data/daily_trips.csv --source partner_feed --logical-date 2024-01-01
 
-# Dry-run mode (validates schema, rows, and batch checks in-memory without database writes)
+# Dry run (no database writes)
 pulsecheck run data/daily_trips.csv --source partner_feed --dry-run
 ```
 
----
-
-## Operational CLI Commands
+## Commands
 
 | Command | Purpose |
 |---|---|
-| `pulsecheck validate-config` | Strict schema validation of YAML configs and environment variables |
-| `pulsecheck init-db` | Idempotent PostgreSQL DDL generation and index creation |
-| `pulsecheck run <file> --source <s>` | Full ingestion pipeline: schema check, row validation, loading, quarantine, metrics |
-| `pulsecheck check-batch <batch_id>` | Evaluate volume, freshness, and scope checks on an existing batch |
-| `pulsecheck replay --status open` | Re-validate open quarantine rows with current config and load valid rows |
-| `pulsecheck diagnose` | Aggregate quarantine reason frequencies and flag supplier/temporal concentration |
-| `pulsecheck export-rejects` | Export quarantined records to CSV with human-readable diagnostic reasons |
-| `pulsecheck benchmark --seed 42` | Run end-to-end synthetic baseline, fault injection, precision/recall scorecard |
+| `pulsecheck validate-config` | Strict validation of YAML configs and environment variables |
+| `pulsecheck init-db` | Idempotent table and index creation |
+| `pulsecheck run <file> --source <s>` | Schema check, row validation, load, quarantine, metrics |
+| `pulsecheck check-batch <batch_id>` | Volume, freshness and scope checks on an existing batch |
+| `pulsecheck replay --status open` | Re-validate quarantined rows with current config |
+| `pulsecheck diagnose` | Reason frequencies and supplier/day concentration |
+| `pulsecheck export-rejects` | Export quarantined rows to CSV with readable reasons |
+| `pulsecheck benchmark --seed 42` | Synthetic baseline, fault injection, precision/recall scorecard |
 
----
+## What's inside
 
-## Real-World Profile: NYC TLC Taxi Data (2.96 Million Rows)
+- **Language and libraries:** Python 3.11+, pandas, Pydantic v2 (strict config), Pandera and indpy behind adapters
+- **Storage:** PostgreSQL (upserts, JSONB quarantine, GIN index on reasons)
+- **Formats:** CSV and Parquet chunked readers
+- **Testing:** 63 unit tests (no external services) plus integration tests against a PostgreSQL container
+- **Delivery:** Docker Compose for local Postgres, Apache 2.0 licence
+- **Docs:** [architecture](docs/architecture.md), [low-level design](docs/lld.md), [24 decision records](docs/decisions.md), [runbook](docs/runbook.md), [config reference](docs/config-reference.md)
 
-To prove portability without modifying application code, PulseCheck was evaluated on one month of real NYC TLC Yellow Taxi parquet trip records (`yellow_tripdata_2024-01.parquet`):
+## What I learned
 
-- **Data Volume**: 2,964,624 raw records partitioned into 31 daily batches.
-- **Configuration**: Dedicated config bundle in `config/tlc/` mapping 19 parquet columns to semantic roles, zone ID (`PULocationID`) to scope, and establishing a composite key `(VendorID, tpep_pickup_datetime, PULocationID, DOLocationID, fare_amount)`.
-- **Empirical Calibration**: Limits calibrated directly from empirical percentiles (duration cap at 4 hours / 14,400s; speed cap at 80 mph).
-- **Execution Results**:
-  - Received: 2,964,606 in-month records
-  - Valid & Loaded: 2,961,265 rows
-  - Quarantined: 3,341 rows (**0.1127% quarantine rate**)
-  - Isolated Out-of-Month Anomalies: 18 records (hardware clock resets to 2002/2009 and month-boundary trips)
-  - Top Detected Quirks: Taximeters left running for 20+ hours, odometer sensor spikes (>1,000 mph implied speed), and negative trip durations.
+*(Rewrite these in your own words; these are drafts based on the design.)*
 
-Full report: [reports/tlc_run.md](reports/tlc_run.md)
+- Handling bad data is the real work. Checking one row is easy; replay, idempotency and batch-level checks took most of the effort.
+- Decoupling rules from column names (roles) is what let the same engine run on logistics data and NYC taxi data with config edits only.
+- Real data is messier than synthetic data: clock resets to 2002 and odometer spikes appeared in a single month of TLC records.
 
----
+## Roadmap
 
-## Project Structure
+*(Suggestions, edit to match what you plan to do.)*
 
-```
-PulseCheck/
-├── config/                  # Default logistics configuration
-│   ├── dataset.yaml         # Column-to-role mappings & conflict policies
-│   ├── rules.yaml           # Active row validation rules & thresholds
-│   ├── checks.yaml          # Batch anomaly checks, alert cooldowns & bench settings
-│   ├── cities.yaml          # Reference bounding boxes for geo rules
-│   └── tlc/                 # Production NYC TLC taxi configuration profile
-├── docs/                    # Technical documentation
-│   ├── architecture.md      # System architecture & component flows
-│   ├── lld.md               # Low-level class diagrams, ERD, and sequence diagrams
-│   ├── decisions.md         # 24 Architecture Decision Records (ADRs)
-│   ├── runbook.md           # Operational and maintenance runbook
-│   └── config-reference.md  # Generated YAML schema reference
-├── reports/                 # Execution summaries & audit reports
-│   ├── benchmark.json       # Machine-readable benchmark run
-│   ├── benchmark.md         # Benchmark scorecard & author statement
-│   └── tlc_run.md           # NYC TLC 31-day batch run report
-├── scripts/                 # Utility scripts (batching, docs generator, geocoder)
-├── src/pulsecheck/          # Core Python application package
-│   ├── adapters/            # External library wrappers (indpy, pandera)
-│   ├── benchmark/           # Automated benchmark evaluation harness
-│   ├── checks/              # Batch checks (volume, freshness, scopes, alerts)
-│   ├── config/              # Pydantic v2 strict schema models & loaders
-│   ├── db/                  # Connection handling & DDL generation
-│   ├── faults/              # Fault injection plugins
-│   ├── generator/           # Synthetic trip data generator
-│   ├── readers/             # CSV & Parquet chunked file readers
-│   ├── rules/               # Pluggable row validation rule registry
-│   ├── clock.py             # Injectable clock abstraction
-│   ├── loader.py            # Idempotent PostgreSQL loader
-│   ├── pipeline.py          # End-to-end ingestion pipeline runner
-│   ├── quarantine.py        # PostgreSQL JSONB quarantine writer
-│   ├── replay.py            # Quarantine replayer & remediation
-│   ├── schema_check.py      # Batch-level schema verifier
-│   └── validator.py         # Row validation & composite key engine
-└── tests/                   # Unit and integration test suites
-    ├── unit/                # 63 standalone unit tests (no external services needed)
-    └── integration/         # PostgreSQL container integration tests
-```
+- [ ] GitHub Actions CI
+- [ ] Run a second real dataset through config only
+- [ ] Optional Airflow DAG and Streamlit dashboard
 
----
+## Author
+
+Prajyot Korde, IT undergrad at Ramdeobaba University · [LinkedIn](https://www.linkedin.com/in/prajyot-korde-912621281/) · [GitHub](https://github.com/PrajyotKorde-18)
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0.
+Apache License 2.0
