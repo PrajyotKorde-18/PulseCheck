@@ -117,15 +117,11 @@ pulsecheck run data/daily_trips.csv --source partner_feed --dry-run
 
 ## What I learned
 
-*(Rewrite these in your own words; these are drafts based on the design.)*
-
 - Handling bad data is the real work. Checking one row is easy; replay, idempotency and batch-level checks took most of the effort.
 - Decoupling rules from column names (roles) is what let the same engine run on logistics data and NYC taxi data with config edits only.
 - Real data is messier than synthetic data: clock resets to 2002 and odometer spikes appeared in a single month of TLC records.
 
 ## Roadmap
-
-*(Suggestions, edit to match what you plan to do.)*
 
 - [ ] GitHub Actions CI
 - [ ] Run a second real dataset through config only
