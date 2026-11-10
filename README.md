@@ -6,14 +6,14 @@ I built this after asking a simple question: what actually happens to a data pip
 
 Real-world run: [NYC TLC Audit (2.96M rows)](reports/tlc_run.md) · Architecture & LLD: [docs/lld.md](docs/lld.md)
 
+
+https://github.com/user-attachments/assets/e3706293-f00c-486d-b06a-e9da432fd594
+
 ## The problem
 
 When millions of records hit an ingestion pipeline daily, even a 0.1% error rate means thousands of bad rows corrupting analytical tables. Add an upstream schema mismatch or a partner dropping an entire city feed, and downstream dashboards quietly report garbage.
 
 Most pipelines either fail the whole file or silently swallow bad records. PulseCheck isolates bad rows into a queryable quarantine table, lets valid records load idempotently, and detects batch-level anomalies like missing scopes or volume drops before downstream jobs run.
-
-
-https://github.com/user-attachments/assets/e3706293-f00c-486d-b06a-e9da432fd594
 
 ## How it works
 
