@@ -14,6 +14,12 @@ Most pipelines either fail the whole file or silently swallow bad records. Pulse
 
 ## How it works
 
+
+https://github.com/user-attachments/assets/e3706293-f00c-486d-b06a-e9da432fd594
+
+
+
+
 Every file goes through two layers of checks:
 
 | Layer | What it is | Why it's there |
